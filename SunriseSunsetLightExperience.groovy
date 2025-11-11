@@ -14,16 +14,16 @@ definition(
     singleInstance: true
 )
 
-def appVersion() { "0.1.0" }
+def appVersion() { "0.1.1" }
 
-def preferences() {
+preferences {
     page(name: "mainPage")
     page(name: "sunrisePage")
     page(name: "sunsetPage")
 }
 
 def mainPage() {
-    dynamicPage(name: "mainPage", title: "Sunrise & Sunset Light Experience v${appVersion()}") {
+    dynamicPage(name: "mainPage", title: "Sunrise & Sunset Light Experience v${appVersion()}", install: true, uninstall: true) {
         section("General") {
             input "lockSwitch", "capability.switch", title: "Lockout switch", required: false
         }
@@ -52,12 +52,16 @@ def buildSequenceInputs(String key, String label) {
     section("${label} schedule") {
         input "${key}Days", "enum", title: "Days", multiple: true, required: false,
             options: ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
-        input "${key}StartType", "enum", title: "Start time", required: false,
+        input "${key}StartType", "enum", title: "Start time", required: false, submitOnChange: true,
             options: ["Fixed","Sunrise","Sunset"], defaultValue: "Fixed"
-        input "${key}StartTime", "time", title: "Fixed start", required: false
-        input "${key}EndType", "enum", title: "End time", required: false,
+        if ((settings["${key}StartType"] ?: "Fixed") == "Fixed") {
+            input "${key}StartTime", "time", title: "Fixed start", required: false
+        }
+        input "${key}EndType", "enum", title: "End time", required: false, submitOnChange: true,
             options: ["Fixed","Sunrise","Sunset"], defaultValue: "Fixed"
-        input "${key}EndTime", "time", title: "Fixed end", required: false
+        if ((settings["${key}EndType"] ?: "Fixed") == "Fixed") {
+            input "${key}EndTime", "time", title: "Fixed end", required: false
+        }
     }
     section("${label} devices") {
         input "${key}Lights", "capability.colorControl", title: "Lights", multiple: true, required: false
@@ -110,8 +114,12 @@ def beginSequence(String key) {
         scheduleNext(key)
         return
     }
-    state.activeSequences[key] = [step: 0]
-    updateLockSwitch(true)
+    Integer target = targetLevel(key)
+    if (target == null) {
+        logWarn "${key.capitalize()} skipped (missing target level)"
+        scheduleNext(key)
+        return
+    }
     Map deviceState = [:]
     lights.each { device ->
         Integer level = key == "sunrise" ? 1 : (device.currentLevel ?: 1)
@@ -120,12 +128,7 @@ def beginSequence(String key) {
         }
         deviceState[device.id as String] = [device: device, level: level]
     }
-    Integer target = targetLevel(key)
-    if (!target) {
-        logWarn "${key.capitalize()} skipped (missing target level)"
-        finishSequence(key)
-        return
-    }
+    updateLockSwitch(true)
     Date startTime = new Date()
     Date endTime = resolveTimeForDate(key, settings["${key}EndType"], settings["${key}EndTime"], startTime)
     if (!endTime || !endTime.after(startTime)) {
@@ -140,7 +143,8 @@ def beginSequence(String key) {
         steps: steps,
         interval: interval,
         target: target,
-        accent: accentPlan(steps, key)
+        accent: accentPlan(steps, key),
+        step: 0
     ]
     logInfo "${key.capitalize()} started (ends ${formatTime(endTime)})"
     runIn(1, "sequenceTick", [overwrite: true, data: [key: key]])
@@ -161,7 +165,7 @@ def sequenceTick(data) {
             return
         }
         Integer startLevel = info.level ?: 1
-        Integer level = (startLevel + ((seq.target - startLevel) * progress)).round()
+        Integer level = Math.max(0, Math.min(100, (startLevel + ((seq.target - startLevel) * progress)).round() as Integer))
         def color = colorFor(progress, seq.accent, key)
         color.level = level
         device.setColor(color)
@@ -226,7 +230,7 @@ def targetLevel(String key) {
     try {
         BigDecimal raw = (var.value ?: var.currentValue ?: "0") as BigDecimal
         Integer value = raw.toInteger()
-        return Math.max(1, Math.min(100, value))
+        return Math.max(0, Math.min(100, value))
     } catch (Exception e) {
         logWarn "Unable to read hub variable ${varName}: ${e.message}"
         return null

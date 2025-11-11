@@ -48,4 +48,5 @@ The app turns the lockout switch on at the beginning of any sequence, gradually 
 
 ## Change Log
 
+- **0.1.1** – Restore the full configuration UI, honor hub-variable end levels including zero, and smooth the start/finish handling.
 - **0.1.0** – Initial release with natural sunrise and sunset journeys, hub-variable end levels, scheduling by day, and lockout switch control.
