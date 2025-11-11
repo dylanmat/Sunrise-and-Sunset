@@ -48,6 +48,7 @@ The app turns the lockout switch on at the beginning of any sequence, gradually 
 
 ## Change Log
 
+- **0.1.4** – Populate the hub-variable selector with numeric entries and guard runs when a target level is missing.
 - **0.1.3** – Restore scheduled starts by using Hubitat-supported runOnce handlers while keeping the existing fade behavior intact.
 - **0.1.2** – Stabilize scheduling and playback so sequences start reliably and keep their active fades in sync even if both run together.
 - **0.1.1** – Restore the full configuration UI, honor hub-variable end levels including zero, and smooth the start/finish handling.

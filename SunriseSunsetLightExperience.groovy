@@ -14,7 +14,7 @@ definition(
     singleInstance: true
 )
 
-def appVersion() { "0.1.3" }
+def appVersion() { "0.1.4" }
 
 preferences {
     page(name: "mainPage")
@@ -230,12 +230,14 @@ def clamp(Double value, Double min, Double max) {
 def targetLevel(String key) {
     String varName = settings["${key}TargetVar"]
     if (!varName) return null
-    def vars = location?.hubVariables ?: [:]
-    def var = vars[varName]
-    if (!var) return null
+    def entry = numericHubVariables()[varName]
+    if (!entry) {
+        logWarn "Hub variable ${varName} unavailable or not numeric"
+        return null
+    }
     try {
-        BigDecimal raw = (var.value ?: var.currentValue ?: "0") as BigDecimal
-        Integer value = raw.intValue()
+        def raw = entry.value ?: entry.currentValue ?: location?.hubVariables?.get(varName)?.value ?: location?.hubVariables?.get(varName)?.currentValue ?: "0"
+        Integer value = (raw as BigDecimal).intValue()
         return Math.max(0, Math.min(100, value))
     } catch (Exception e) {
         logWarn "Unable to read hub variable ${varName}: ${e.message}"
@@ -288,9 +290,15 @@ def toDate(Date day, String timeText, TimeZone tz) {
 }
 
 def hubVariableOptions() {
-    def vars = location?.hubVariables ?: [:]
-    if (!vars) return []
-    vars.keySet().toList().sort()
+    numericHubVariables().keySet()?.toList()?.sort() ?: []
+}
+
+def numericHubVariables() {
+    Map vars = [:]
+    try {
+        vars = getAllGlobalVars() ?: [:]
+    } catch (ignored) {}
+    (vars ?: [:]).findAll { it.value?.type in ["integer", "bigdecimal"] } ?: [:]
 }
 
 def formatTime(Date date) {
