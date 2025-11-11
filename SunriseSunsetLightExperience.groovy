@@ -14,7 +14,7 @@ definition(
     singleInstance: true
 )
 
-def appVersion() { "0.1.4" }
+def appVersion() { "0.1.5" }
 
 preferences {
     page(name: "mainPage")
@@ -26,6 +26,7 @@ def mainPage() {
     dynamicPage(name: "mainPage", title: "Sunrise & Sunset Light Experience v${appVersion()}", install: true, uninstall: true) {
         section("General") {
             input "lockSwitch", "capability.switch", title: "Lockout switch", required: false
+            input "enableDebug", "bool", title: "Enable debug logging", required: false, defaultValue: false
         }
         section("Sunrise") {
             href "sunrisePage", title: "Configure Sunrise"
@@ -139,8 +140,9 @@ def beginSequence(String key) {
     if (!endTime || !endTime.after(startTime)) {
         endTime = new Date(startTime.time + 45 * 60 * 1000)
     }
-    Integer steps = Math.max(20, ((endTime.time - startTime.time) / (90 * 1000)) as Integer)
-    Long interval = Math.max(45L, ((endTime.time - startTime.time) / steps / 1000) as Long)
+    Long duration = Math.max(10_000L, endTime.time - startTime.time)
+    Integer steps = Math.max(60, Math.round(duration / 15_000d))
+    Long interval = Math.max(2L, Math.round(duration / steps / 1000d))
     state.activeSequences[key] = [
         levels: startingLevels,
         start: startTime.time,
@@ -152,6 +154,7 @@ def beginSequence(String key) {
         step: 0
     ]
     logInfo "${key.capitalize()} started (ends ${formatTime(endTime)})"
+    logDebug "${key} duration ${duration}ms, ${steps} steps, interval ${interval}s"
     runIn(1, "sequenceTick", [overwrite: false, data: [key: key]])
 }
 
@@ -175,6 +178,9 @@ def sequenceTick(data) {
         def color = colorFor(progress, seq.accent, key)
         color.level = level
         device.setColor(color)
+        Double hueVal = ((color.hue ?: 0) as Number).toDouble()
+        Double satVal = ((color.saturation ?: 0) as Number).toDouble()
+        logDebug "${key} step ${step}/${seq.steps} -> ${device.displayName} level ${level} hue ${String.format('%.1f', hueVal)} sat ${String.format('%.1f', satVal)}"
     }
     if (progress >= 1.0d) {
         finishSequence(key)
@@ -195,18 +201,18 @@ def finishSequence(String key) {
 }
 
 def colorFor(Double progress, Map accent, String key) {
-    Double startHue = key == "sunrise" ? 8d : 50d
-    Double endHue = key == "sunrise" ? 55d : 8d
-    Double startSat = key == "sunrise" ? 80d : 35d
-    Double endSat = key == "sunrise" ? 30d : 75d
+    Double startHue = key == "sunrise" ? 10d : 42d
+    Double endHue = key == "sunrise" ? 44d : 12d
+    Double startSat = key == "sunrise" ? 78d : 38d
+    Double endSat = key == "sunrise" ? 32d : 72d
     Double hue = startHue + (endHue - startHue) * progress
     Double sat = startSat + (endSat - startSat) * progress
     if (accent && progress >= accent.start && progress <= accent.end) {
         hue += accent.shift
         sat = Math.max(20d, Math.min(90d, sat + accent.satShift))
     }
-    hue += randomSoft( -4d, 4d)
-    sat += randomSoft(-6d, 6d)
+    hue += randomSoft(-3d, 3d)
+    sat += randomSoft(-5d, 5d)
     [hue: clamp(hue, 0d, 100d), saturation: clamp(sat, 5d, 90d)]
 }
 
@@ -214,8 +220,8 @@ def accentPlan(Integer steps, String key) {
     if (steps < 10) return null
     Double start = 0.2d + Math.random() * 0.5d
     Double width = 0.1d + Math.random() * 0.1d
-    Double shift = key == "sunrise" ? 8d : -10d
-    Double satShift = key == "sunrise" ? 5d : 10d
+    Double shift = key == "sunrise" ? 5d : -6d
+    Double satShift = key == "sunrise" ? 4d : 8d
     [start: start, end: Math.min(0.95d, start + width), shift: shift, satShift: satShift]
 }
 
@@ -309,6 +315,12 @@ def formatTime(Date date) {
 def logInfo(msg) { log.info "[SunriseSunset] ${msg}" }
 
 def logWarn(msg) { log.warn "[SunriseSunset] ${msg}" }
+
+def logDebug(msg) {
+    if (enableDebug) {
+        log.debug "[SunriseSunset] ${msg}"
+    }
+}
 
 def updateLockSwitch(boolean turningOn) {
     if (!lockSwitch) return

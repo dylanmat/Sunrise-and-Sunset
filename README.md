@@ -46,8 +46,13 @@ Codex often drifts or over-complicates the automation.
 
 The app turns the lockout switch on at the beginning of any sequence, gradually walks through gentle hue and level steps, then turns the switch off and changes to the mode you chose.
 
+### Optional Debug Logging
+
+Enable the **Debug logging** toggle in the app preferences when you want detailed step-by-step logs. Turn it back off during normal operation to keep the logs tidy.
+
 ## Change Log
 
+- **0.1.5** – Refine the color path to avoid green tones, smooth the step cadence based on sequence duration, tighten accent shifts, and add a debug logging toggle.
 - **0.1.4** – Populate the hub-variable selector with numeric entries and guard runs when a target level is missing.
 - **0.1.3** – Restore scheduled starts by using Hubitat-supported runOnce handlers while keeping the existing fade behavior intact.
 - **0.1.2** – Stabilize scheduling and playback so sequences start reliably and keep their active fades in sync even if both run together.
