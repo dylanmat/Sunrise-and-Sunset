@@ -34,26 +34,18 @@ Sunrise and Sunset each include:
 Codex often drifts or over-complicates the automation.  
 `AGENTS.md` contains focused prompts designed to keep it on track so generation stays clean and consistent.
 
-## Where To Start
+## Setup
 
-1. Open `AGENTS.md`
-2. Copy the prompt you want — Full, Minimal, or Ultra-short
-3. Paste into Codex
-4. Review output, lightly test with a couple bulbs first
+1. Install the app code in **Apps Code** on your Hubitat hub.
+2. Create or pick a **Hub Variable** that holds the final dimmer level (1–100).
+3. Add the app from the **Apps** list and configure Sunrise and Sunset individually:
+   - Choose the days to run and the start/end option (fixed time or real sunrise/sunset).
+   - Select the color-capable lights to guide through the sequence.
+   - Pick the Hub Variable for the finishing dimmer level and the mode to set when done.
+4. (Optional) Assign a lockout switch so other automations know to wait while the sequence runs.
 
----
+The app turns the lockout switch on at the beginning of any sequence, gradually walks through gentle hue and level steps, then turns the switch off and changes to the mode you chose.
 
-This is a first-draft README — we can expand installation steps, screenshots, or examples later once your app is generated.
+## Change Log
 
----
-
-## ✅ **Download AGENTS.md**
-
-Your prompts are stored here:
-
-📄 **[Download AGENTS.md](sandbox:/mnt/data/AGENTS.md)**
-
-Let me know if you'd like:
-- a LICENSE file,
-- a structure for `/apps` and `/drivers`,
-- or a more detailed README with examples, troubleshooting, and feature expansion. ​:contentReference[oaicite:0]{index=0}​
+- **0.1.0** – Initial release with natural sunrise and sunset journeys, hub-variable end levels, scheduling by day, and lockout switch control.
