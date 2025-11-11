@@ -14,7 +14,7 @@ definition(
     singleInstance: true
 )
 
-def appVersion() { "0.1.1" }
+def appVersion() { "0.1.2" }
 
 preferences {
     page(name: "mainPage")
@@ -82,7 +82,7 @@ def updated() {
 }
 
 def initialize() {
-    state.activeSequences = state.activeSequences ?: [:]
+    state.activeSequences = [:]
     logInfo "Initializing v${appVersion()}"
     scheduleNext("sunrise")
     scheduleNext("sunset")
@@ -97,7 +97,8 @@ def scheduleNext(String key) {
     }
     Date next = nextOccurrence(key, settings["${key}StartType"], settings["${key}StartTime"], days)
     if (next) {
-        runOnce(next, "${key}Begin")
+        def handler = key == "sunrise" ? this.&sunriseBegin : this.&sunsetBegin
+        runOnce(next, handler)
         logInfo "${key.capitalize()} scheduled for ${formatTime(next)}"
     } else {
         logWarn "${key.capitalize()} not scheduled (no future time)"
@@ -114,19 +115,23 @@ def beginSequence(String key) {
         scheduleNext(key)
         return
     }
+    if (state.activeSequences[key]) {
+        logWarn "${key.capitalize()} already running"
+        return
+    }
     Integer target = targetLevel(key)
     if (target == null) {
         logWarn "${key.capitalize()} skipped (missing target level)"
         scheduleNext(key)
         return
     }
-    Map deviceState = [:]
+    Map<String, Integer> startingLevels = [:]
     lights.each { device ->
-        Integer level = key == "sunrise" ? 1 : (device.currentLevel ?: 1)
+        Integer level = key == "sunrise" ? 1 : ((device.currentLevel ?: 1) as Integer)
         if (key == "sunrise") {
             device.setLevel(1, 10)
         }
-        deviceState[device.id as String] = [device: device, level: level]
+        startingLevels[device.id as String] = level
     }
     updateLockSwitch(true)
     Date startTime = new Date()
@@ -137,7 +142,7 @@ def beginSequence(String key) {
     Integer steps = Math.max(20, ((endTime.time - startTime.time) / (90 * 1000)) as Integer)
     Long interval = Math.max(45L, ((endTime.time - startTime.time) / steps / 1000) as Long)
     state.activeSequences[key] = [
-        devices: deviceState,
+        levels: startingLevels,
         start: startTime.time,
         end: endTime.time,
         steps: steps,
@@ -147,7 +152,7 @@ def beginSequence(String key) {
         step: 0
     ]
     logInfo "${key.capitalize()} started (ends ${formatTime(endTime)})"
-    runIn(1, "sequenceTick", [overwrite: true, data: [key: key]])
+    runIn(1, "sequenceTick", [overwrite: false, data: [key: key]])
 }
 
 def sequenceTick(data) {
@@ -159,12 +164,13 @@ def sequenceTick(data) {
     Integer step = (seq.step ?: 0) + 1
     seq.step = step
     Double progress = Math.min(1.0d, (step as Double) / (seq.steps as Double))
-    seq.devices.values().each { info ->
-        def device = info.device
-        if (!device || device.currentSwitch != "on") {
+    def devices = settings["${key}Lights"]?.findAll { it }
+    devices?.each { device ->
+        String deviceId = device.id as String
+        Integer startLevel = (seq.levels[deviceId] ?: (key == "sunrise" ? 1 : (device.currentLevel ?: 1))) as Integer
+        if (device.currentSwitch != "on") {
             return
         }
-        Integer startLevel = info.level ?: 1
         Integer level = Math.max(0, Math.min(100, (startLevel + ((seq.target - startLevel) * progress)).round() as Integer))
         def color = colorFor(progress, seq.accent, key)
         color.level = level
@@ -173,7 +179,7 @@ def sequenceTick(data) {
     if (progress >= 1.0d) {
         finishSequence(key)
     } else {
-        runIn(seq.interval as Long, "sequenceTick", [overwrite: true, data: [key: key]])
+        runIn(seq.interval as Long, "sequenceTick", [overwrite: false, data: [key: key]])
     }
 }
 
@@ -229,7 +235,7 @@ def targetLevel(String key) {
     if (!var) return null
     try {
         BigDecimal raw = (var.value ?: var.currentValue ?: "0") as BigDecimal
-        Integer value = raw.toInteger()
+        Integer value = raw.intValue()
         return Math.max(0, Math.min(100, value))
     } catch (Exception e) {
         logWarn "Unable to read hub variable ${varName}: ${e.message}"
