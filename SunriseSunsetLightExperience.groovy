@@ -14,7 +14,7 @@ definition(
     singleInstance: true
 )
 
-def appVersion() { "0.1.2" }
+def appVersion() { "0.1.3" }
 
 preferences {
     page(name: "mainPage")
@@ -97,7 +97,7 @@ def scheduleNext(String key) {
     }
     Date next = nextOccurrence(key, settings["${key}StartType"], settings["${key}StartTime"], days)
     if (next) {
-        def handler = key == "sunrise" ? this.&sunriseBegin : this.&sunsetBegin
+        String handler = key == "sunrise" ? "sunriseBegin" : "sunsetBegin"
         runOnce(next, handler)
         logInfo "${key.capitalize()} scheduled for ${formatTime(next)}"
     } else {
