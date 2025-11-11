@@ -1,7 +1,3 @@
-Got it. Here are clean, copy-paste prompts for Codex. They’re intentionally simple, behavioral, and non-technical so it won’t run off into API minutiae.
-
----
-
 # Prompt A — Full build
 
 **Task:**
