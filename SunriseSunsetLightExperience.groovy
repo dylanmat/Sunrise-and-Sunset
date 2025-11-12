@@ -14,7 +14,7 @@ definition(
     singleInstance: true
 )
 
-def appVersion() { "0.1.6" }
+def appVersion() { "0.1.7" }
 
 preferences {
     page(name: "mainPage")
@@ -201,36 +201,89 @@ def finishSequence(String key) {
 }
 
 def colorFor(Double progress, Map accent, String key) {
-    Double startHue = key == "sunrise" ? 8d : 30d
-    Double endHue = key == "sunrise" ? 24d : 12d
-    Double startSat = key == "sunrise" ? 74d : 44d
-    Double endSat = key == "sunrise" ? 36d : 68d
-    Double hue = startHue + (endHue - startHue) * progress
-    Double sat = startSat + (endSat - startSat) * progress
+    Map base = interpolateColor(colorPath(key), progress ?: 0d)
     if (accent && progress >= accent.start && progress <= accent.end) {
-        hue += accent.shift
-        sat = Math.max(20d, Math.min(90d, sat + accent.satShift))
+        Double span = Math.max(0.001d, accent.end - accent.start)
+        Double local = clampDouble((progress - accent.start) / span, 0d, 1d)
+        Double blend = Math.sin(Math.PI * local)
+        base.hue += (accent.hue - base.hue) * blend * 0.75d
+        base.saturation += (accent.saturation - base.saturation) * blend * 0.6d
     }
-    hue += randomSoft(-2d, 2d)
-    sat += randomSoft(-4d, 4d)
-    [hue: clamp(hue, 0d, 100d), saturation: clamp(sat, 5d, 90d)]
+    Double hue = base.hue + randomSoft(-1.5d, 1.5d)
+    Double sat = base.saturation + randomSoft(-3d, 3d)
+    [hue: safeHue(hue), saturation: clamp(sat, 20d, 90d)]
 }
 
 def accentPlan(Integer steps, String key) {
-    if (steps < 10) return null
-    Double start = 0.2d + Math.random() * 0.5d
-    Double width = 0.1d + Math.random() * 0.1d
-    Double shift = key == "sunrise" ? 2d : -4d
-    Double satShift = key == "sunrise" ? 3d : 6d
-    [start: start, end: Math.min(0.95d, start + width), shift: shift, satShift: satShift]
+    if (steps < 20) return null
+    Double start = 0.18d + Math.random() * 0.5d
+    Double width = 0.12d + Math.random() * 0.12d
+    List palette = key == "sunrise"
+        ? [[hue: 72d, saturation: 74d], [hue: 78d, saturation: 62d], [hue: 8d, saturation: 82d]]
+        : [[hue: 86d, saturation: 76d], [hue: 74d, saturation: 68d], [hue: 12d, saturation: 84d]]
+    Map accentColor = palette[(Math.random() * palette.size()).intValue()]
+    [start: start, end: Math.min(0.96d, start + width), hue: accentColor.hue, saturation: accentColor.saturation]
 }
 
 def randomSoft(Double min, Double max) {
     (Math.random() * (max - min)) + min
 }
 
+def interpolateColor(List path, Double progress) {
+    if (!path) return [hue: 20d, saturation: 60d]
+    Double pos = clampDouble(progress, 0d, 1d)
+    Map lower = path.first()
+    Map upper = path.last()
+    path.each { stop ->
+        if (stop.pos <= pos && stop.pos >= lower.pos) {
+            lower = stop
+        }
+        if (stop.pos >= pos && stop.pos <= upper.pos) {
+            upper = stop
+        }
+    }
+    if (lower.pos == upper.pos) {
+        return [hue: lower.hue, saturation: lower.saturation]
+    }
+    Double ratio = (pos - lower.pos) / (upper.pos - lower.pos)
+    [
+        hue: lower.hue + (upper.hue - lower.hue) * ratio,
+        saturation: lower.saturation + (upper.saturation - lower.saturation) * ratio
+    ]
+}
+
+def colorPath(String key) {
+    if (key == "sunrise") {
+        return [
+            [pos: 0d, hue: 4d, saturation: 82d],
+            [pos: 0.35d, hue: 10d, saturation: 76d],
+            [pos: 0.7d, hue: 18d, saturation: 58d],
+            [pos: 1d, hue: 26d, saturation: 44d]
+        ]
+    }
+    [
+        [pos: 0d, hue: 18d, saturation: 64d],
+        [pos: 0.4d, hue: 24d, saturation: 74d],
+        [pos: 0.68d, hue: 12d, saturation: 68d],
+        [pos: 0.85d, hue: 88d, saturation: 70d],
+        [pos: 1d, hue: 78d, saturation: 48d]
+    ]
+}
+
+def clampDouble(Double value, Double min, Double max) {
+    Math.max(min, Math.min(max, value))
+}
+
 def clamp(Double value, Double min, Double max) {
     Math.max(min, Math.min(max, value)).round() as Integer
+}
+
+def safeHue(Double value) {
+    Double limited = clampDouble(value, 0d, 100d)
+    if (limited >= 38d && limited <= 60d) {
+        limited = limited < 49d ? 37d : 61d
+    }
+    limited.round() as Integer
 }
 
 def targetLevel(String key) {
