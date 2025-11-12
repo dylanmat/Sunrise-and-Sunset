@@ -52,6 +52,7 @@ Enable the **Debug logging** toggle in the app preferences when you want detaile
 
 ## Change Log
 
+- **0.1.6** – Round hue and saturation commands to whole numbers and tighten the palette to keep every blend warmly toned.
 - **0.1.5** – Refine the color path to avoid green tones, smooth the step cadence based on sequence duration, tighten accent shifts, and add a debug logging toggle.
 - **0.1.4** – Populate the hub-variable selector with numeric entries and guard runs when a target level is missing.
 - **0.1.3** – Restore scheduled starts by using Hubitat-supported runOnce handlers while keeping the existing fade behavior intact.
