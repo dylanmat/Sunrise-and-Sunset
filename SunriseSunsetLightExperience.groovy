@@ -14,7 +14,7 @@ definition(
     singleInstance: true
 )
 
-def appVersion() { "0.1.7" }
+def appVersion() { "0.1.8" }
 
 preferences {
     page(name: "mainPage")
@@ -219,8 +219,8 @@ def accentPlan(Integer steps, String key) {
     Double start = 0.18d + Math.random() * 0.5d
     Double width = 0.12d + Math.random() * 0.12d
     List palette = key == "sunrise"
-        ? [[hue: 72d, saturation: 74d], [hue: 78d, saturation: 62d], [hue: 8d, saturation: 82d]]
-        : [[hue: 86d, saturation: 76d], [hue: 74d, saturation: 68d], [hue: 12d, saturation: 84d]]
+        ? [[hue: 6d, saturation: 82d], [hue: 14d, saturation: 70d], [hue: 22d, saturation: 64d]]
+        : [[hue: 8d, saturation: 78d], [hue: 18d, saturation: 60d], [hue: 24d, saturation: 68d]]
     Map accentColor = palette[(Math.random() * palette.size()).intValue()]
     [start: start, end: Math.min(0.96d, start + width), hue: accentColor.hue, saturation: accentColor.saturation]
 }
@@ -262,11 +262,11 @@ def colorPath(String key) {
         ]
     }
     [
-        [pos: 0d, hue: 18d, saturation: 64d],
-        [pos: 0.4d, hue: 24d, saturation: 74d],
-        [pos: 0.68d, hue: 12d, saturation: 68d],
-        [pos: 0.85d, hue: 88d, saturation: 70d],
-        [pos: 1d, hue: 78d, saturation: 48d]
+        [pos: 0d, hue: 12d, saturation: 64d],
+        [pos: 0.4d, hue: 18d, saturation: 58d],
+        [pos: 0.68d, hue: 22d, saturation: 52d],
+        [pos: 0.85d, hue: 24d, saturation: 46d],
+        [pos: 1d, hue: 26d, saturation: 40d]
     ]
 }
 
@@ -279,11 +279,7 @@ def clamp(Double value, Double min, Double max) {
 }
 
 def safeHue(Double value) {
-    Double limited = clampDouble(value, 0d, 100d)
-    if (limited >= 38d && limited <= 60d) {
-        limited = limited < 49d ? 37d : 61d
-    }
-    limited.round() as Integer
+    clampDouble(value, 0d, 28d).round() as Integer
 }
 
 def targetLevel(String key) {
