@@ -1,3 +1,4 @@
 # List of issues to fix
 
-(none)
+* totally avoid green and blue
+
