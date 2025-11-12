@@ -14,7 +14,7 @@ definition(
     singleInstance: true
 )
 
-def appVersion() { "0.1.5" }
+def appVersion() { "0.1.6" }
 
 preferences {
     page(name: "mainPage")
@@ -178,9 +178,9 @@ def sequenceTick(data) {
         def color = colorFor(progress, seq.accent, key)
         color.level = level
         device.setColor(color)
-        Double hueVal = ((color.hue ?: 0) as Number).toDouble()
-        Double satVal = ((color.saturation ?: 0) as Number).toDouble()
-        logDebug "${key} step ${step}/${seq.steps} -> ${device.displayName} level ${level} hue ${String.format('%.1f', hueVal)} sat ${String.format('%.1f', satVal)}"
+        Integer hueVal = ((color.hue ?: 0) as Number).intValue()
+        Integer satVal = ((color.saturation ?: 0) as Number).intValue()
+        logDebug "${key} step ${step}/${seq.steps} -> ${device.displayName} level ${level} hue ${hueVal} sat ${satVal}"
     }
     if (progress >= 1.0d) {
         finishSequence(key)
@@ -201,18 +201,18 @@ def finishSequence(String key) {
 }
 
 def colorFor(Double progress, Map accent, String key) {
-    Double startHue = key == "sunrise" ? 10d : 42d
-    Double endHue = key == "sunrise" ? 44d : 12d
-    Double startSat = key == "sunrise" ? 78d : 38d
-    Double endSat = key == "sunrise" ? 32d : 72d
+    Double startHue = key == "sunrise" ? 8d : 30d
+    Double endHue = key == "sunrise" ? 24d : 12d
+    Double startSat = key == "sunrise" ? 74d : 44d
+    Double endSat = key == "sunrise" ? 36d : 68d
     Double hue = startHue + (endHue - startHue) * progress
     Double sat = startSat + (endSat - startSat) * progress
     if (accent && progress >= accent.start && progress <= accent.end) {
         hue += accent.shift
         sat = Math.max(20d, Math.min(90d, sat + accent.satShift))
     }
-    hue += randomSoft(-3d, 3d)
-    sat += randomSoft(-5d, 5d)
+    hue += randomSoft(-2d, 2d)
+    sat += randomSoft(-4d, 4d)
     [hue: clamp(hue, 0d, 100d), saturation: clamp(sat, 5d, 90d)]
 }
 
@@ -220,8 +220,8 @@ def accentPlan(Integer steps, String key) {
     if (steps < 10) return null
     Double start = 0.2d + Math.random() * 0.5d
     Double width = 0.1d + Math.random() * 0.1d
-    Double shift = key == "sunrise" ? 5d : -6d
-    Double satShift = key == "sunrise" ? 4d : 8d
+    Double shift = key == "sunrise" ? 2d : -4d
+    Double satShift = key == "sunrise" ? 3d : 6d
     [start: start, end: Math.min(0.95d, start + width), shift: shift, satShift: satShift]
 }
 
@@ -230,7 +230,7 @@ def randomSoft(Double min, Double max) {
 }
 
 def clamp(Double value, Double min, Double max) {
-    Math.max(min, Math.min(max, value)).round(2)
+    Math.max(min, Math.min(max, value)).round() as Integer
 }
 
 def targetLevel(String key) {
